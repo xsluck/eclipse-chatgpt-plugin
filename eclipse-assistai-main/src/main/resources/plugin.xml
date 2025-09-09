@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <extension
+         id="com.github.gradusnikov.eclipse.assistai.fragment"
+         point="org.eclipse.e4.workbench.model">
+      <fragment
+            apply="always"
+            uri="fragment.e4xmi">
+      </fragment>
+   </extension>
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      
+      <page
+            class="com.github.gradusnikov.eclipse.assistai.preferences.models.ModelPreferencePage"
+            id="com.github.gradusnikov.eclipse.assistai.preferences.OpenAIPreferencePage"
+            name="AssistAI">
+      </page>
+        <page
+            id="com.github.gradusnikov.eclipse.assistai.preferences.PromptsPreferencePage"
+            name="Prompts"
+            category="com.github.gradusnikov.eclipse.assistai.preferences.OpenAIPreferencePage"
+            class="com.github.gradusnikov.eclipse.assistai.preferences.prompts.PromptsPreferencePage">
+        </page>      
+        <page
+            id="com.github.gradusnikov.eclipse.assistai.preferences.ModelListPreferencePage"
+            name="Models"
+            category="com.github.gradusnikov.eclipse.assistai.preferences.OpenAIPreferencePage"
+            class="com.github.gradusnikov.eclipse.assistai.preferences.models.ModelListPreferencePage">
+        </page>
+        <page
+            id="com.github.gradusnikov.eclipse.assistai.preferences.McpServerPreferencePage"
+            name="MCP Servers"
+            category="com.github.gradusnikov.eclipse.assistai.preferences.OpenAIPreferencePage"
+            class="com.github.gradusnikov.eclipse.assistai.preferences.mcp.McpServerPreferencePage">
+        </page>
+   </extension>
+   <extension
+         point="org.eclipse.core.runtime.preferences">
+      <initializer
+            class="com.github.gradusnikov.eclipse.assistai.preferences.PreferenceInitializer">
+      </initializer>
+   </extension>
+
+</plugin>

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.github.gradusnikov.eclipse</groupId>
+    <artifactId>eclipse-assistai-parent</artifactId>
+    <version>1.0.6-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>Eclipse AssistAI Parent</name>
+    <description>Eclipse IDE plugin that brings Large Language Model (LLM) assistant into your development environment</description>
+
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <tycho.version>4.0.13</tycho.version>
+        <eclipse.platform.version>2025-06</eclipse.platform.version>
+    </properties>
+
+    <modules>
+        <module>eclipse-assistai-main</module>
+        <module>eclipse-assistai-feature</module>
+        <module>eclipse-assistai-site</module>
+    </modules>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.eclipse.tycho</groupId>
+                <artifactId>tycho-maven-plugin</artifactId>
+                <version>${tycho.version}</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <target-platform-configuration>
+                        <pomDependencies>wrapAsBundle</pomDependencies>
+                    </target-platform-configuration>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <repositories>
+        <repository>
+            <id>central</id>
+            <url>https://repo1.maven.org/maven2/</url>
+        </repository>
+        <repository>
+            <id>eclipse-releases</id>
+            <url>https://download.eclipse.org/releases/2025-06/</url>
+            <layout>p2</layout>
+        </repository>
+        <repository>
+            <id>eclipse-ide</id>
+            <url>https://repo.eclipse.org/content/groups/releases/</url>
+        </repository>
+    </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>central</id>
+            <url>https://repo1.maven.org/maven2/</url>
+        </pluginRepository>
+        <pluginRepository>
+            <id>eclipse-releases</id>
+            <url>https://download.eclipse.org/releases/2025-06/</url>
+            <layout>p2</layout>
+        </pluginRepository>
+    </pluginRepositories>
+
+</project>
