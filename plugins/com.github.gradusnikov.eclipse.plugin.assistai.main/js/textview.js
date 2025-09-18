@@ -1,27 +1,27 @@
 // Function to update summary with function name
 function updateFunctionCallSummaries() {
   // Find all function call detail elements
-  const functionCallDetails = document.querySelectorAll('.function-call details');
+	const functionCallDetails = document.querySelectorAll('.function-call details');
   
   functionCallDetails.forEach(detailsElement => {
-    const summaryElement = detailsElement.querySelector('summary');
-    const preElement = detailsElement.querySelector('pre');
-    
-    if (preElement && summaryElement) {
-      // Process content immediately
-      const content = preElement.textContent;
-      const nameMcpToolMatch = content.match(/"name"\s*:\s*"([^_]+)__([^"]+)"/);
-      const nameMatch = content.match(/"name"\s*:\s*"([^"]+)"/);
+      const summaryElement = detailsElement.querySelector('summary');
+      const preElement = detailsElement.querySelector('pre');
       
-      if (nameMcpToolMatch && nameMcpToolMatch[1] && nameMcpToolMatch[2]) {
-        const mcp = nameMcpToolMatch[1];
-        const tool = nameMcpToolMatch[2];
-        summaryElement.textContent = `Using Tool @${mcp}: ${tool}`;
-      } else if (nameMatch && nameMatch[1]) {
-        summaryElement.textContent = `Function call: ${nameMatch[1]}`;
+      if (preElement && summaryElement) {
+        // Process content immediately
+        const content = preElement.textContent;
+        const nameMcpToolMatch = content.match(/"name"\s*:\s*"([^_]+)__([^"]+)"/);
+        const nameMatch = content.match(/"name"\s*:\s*"([^"]+)"/);
+        
+        if (nameMcpToolMatch && nameMcpToolMatch[1] && nameMcpToolMatch[2]) {
+          const mcp = nameMcpToolMatch[1];
+          const tool = nameMcpToolMatch[2];
+          summaryElement.textContent = `Using Tool @${mcp}: ${tool}`;
+        } else if (nameMatch && nameMatch[1]) {
+          summaryElement.textContent = `Function call: ${nameMatch[1]}`;
+        }
       }
-    }
-  });
+    });
 }
 
 function renderLatex() {

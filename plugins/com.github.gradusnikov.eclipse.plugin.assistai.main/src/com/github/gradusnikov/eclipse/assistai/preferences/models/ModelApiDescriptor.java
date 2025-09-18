@@ -11,5 +11,6 @@ public record ModelApiDescriptor(
          String modelName,
          int temperature,
          boolean vision,
-         boolean functionCalling
+         boolean functionCalling,
+         boolean toolCalling
          ) {} 

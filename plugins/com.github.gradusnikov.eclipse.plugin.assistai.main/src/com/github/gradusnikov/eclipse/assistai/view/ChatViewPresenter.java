@@ -70,468 +70,404 @@ import jakarta.inject.Singleton;
 
 @Creatable
 @Singleton
-public class ChatViewPresenter
-{
-    @Inject
-    private ILog                          logger;
+public class ChatViewPresenter {
+	@Inject
+	private ILog logger;
 
-    @Inject
-    private PartAccessor                  partAccessor;
+	@Inject
+	private PartAccessor partAccessor;
 
-    @Inject
-    private Conversation                  conversation;
+	@Inject
+	private Conversation conversation;
 
-    @Inject
-    private ChatMessageFactory            chatMessageFactory;
+	@Inject
+	private ChatMessageFactory chatMessageFactory;
 
-    @Inject
-    private IJobManager                   jobManager;
+	@Inject
+	private IJobManager jobManager;
 
-    @Inject
-    private Provider<SendConversationJob> sendConversationJobProvider;
+	@Inject
+	private Provider<SendConversationJob> sendConversationJobProvider;
 
-    @Inject
-    private AppendMessageToViewSubscriber appendMessageToViewSubscriber;
-    
-    @Inject
-    private ApplyPatchWizardHelper        applyPatchWizzardHelper;
-    
-    @Inject
-    private CodeEditingService codeEditingService;
-    
-    @Inject
-    private ModelApiDescriptorRepository modelReposotiry;
-    
-    @Inject
-    private PromptRepository promptRepository;
-    
-    @Inject
-    private UISynchronize uiSync;
-    
-    
-    private IPreferenceStore preferences;
-    
-    private static final String           LAST_SELECTED_DIR_KEY = "lastSelectedDirectory";
+	@Inject
+	private AppendMessageToViewSubscriber appendMessageToViewSubscriber;
 
-    private final List<Attachment>        attachments           = new ArrayList<>();
+	@Inject
+	private ApplyPatchWizardHelper applyPatchWizzardHelper;
 
-    @PostConstruct
-    public void init()
-    {
-        preferences = Activator.getDefault().getPreferenceStore();
-    	appendMessageToViewSubscriber.setPresenter( this );
-        
-        initializeAvailableModels();
-    }
+	@Inject
+	private CodeEditingService codeEditingService;
+
+	@Inject
+	private ModelApiDescriptorRepository modelReposotiry;
+
+	@Inject
+	private PromptRepository promptRepository;
+
+	@Inject
+	private UISynchronize uiSync;
+
+	private IPreferenceStore preferences;
+
+	private static final String LAST_SELECTED_DIR_KEY = "lastSelectedDirectory";
+
+	private final List<Attachment> attachments = new ArrayList<>();
+
+	@PostConstruct
+	public void init() {
+		preferences = Activator.getDefault().getPreferenceStore();
+		appendMessageToViewSubscriber.setPresenter(this);
+		initializeAvailableModels();
+	}
 
 	private void initializeAvailableModels() {
 		// Initialize model from preferences if available
-        var selectedModel = modelReposotiry.getModelInUse();
-        var models = modelReposotiry.listModelApiDescriptors();
-        applyToView( view -> {
-        	view.setAvailableModels( models, Optional.ofNullable( selectedModel.uid() ).orElse("" ) );
-        });
+		var selectedModel = modelReposotiry.getModelInUse();
+		var models = modelReposotiry.listModelApiDescriptors();
+		applyToView(view -> {
+			view.setAvailableModels(models, Optional.ofNullable(selectedModel.uid()).orElse(""));
+		});
 	}
 
-    public void onClear()
-    {
-        onStop();
-        conversation.clear();
-        attachments.clear();
-        applyToView( view -> {
-            view.clearChatView();
-            view.clearUserInput();
-            view.clearAttachments();
-        } );
-    }
+	public void onClear() {
+		onStop();
+		conversation.clear();
+		attachments.clear();
+		applyToView(view -> {
+			view.clearChatView();
+			view.clearUserInput();
+			view.clearAttachments();
+		});
+	}
 
-    public void onSendUserMessage( String text )
-    {
-        ChatMessage message = createUserMessage( text );
-        conversation.add( message );
-        ChatMessage displayedMessage = createUserMessage( "" );
-        displayedMessage.setContent( text );
-        applyToView( part -> {
-            part.clearUserInput();
-            part.clearAttachments();
-            part.appendMessage( message.getId(), message.getRole() );
-            String content = ChatMessageUtilities.toMarkdownContent( displayedMessage );
-            part.setMessageHtml( message.getId(), content );
-            attachments.clear();
-        } );
-        sendConversationJobProvider.get().schedule();
-    }
+	public void onSendUserMessage(String text) {
+		ChatMessage message = createUserMessage(text);
+		conversation.add(message);
+		ChatMessage displayedMessage = createUserMessage("");
+		displayedMessage.setContent(text);
+		applyToView(part -> {
+			part.clearUserInput();
+			part.clearAttachments();
+			part.appendMessage(message.getId(), message.getRole());
+			String content = ChatMessageUtilities.toMarkdownContent(displayedMessage);
+			part.setMessageHtml(message.getId(), content);
+			attachments.clear();
+		});
+		sendConversationJobProvider.get().schedule();
+	}
 
-    private ChatMessage createUserMessage( String userMessage )
-    {
-        Pattern commandPattern = Pattern.compile("^/(\\S+)");
-        Matcher commandMatcher = commandPattern.matcher( userMessage );
-        Supplier<String> supplier = () -> userMessage;
-        if ( commandMatcher.find() )
-        {
-            supplier = () -> promptRepository.findPromptByCommandName( commandMatcher.group( 1 ) )
-                                             .map( chatMessageFactory::createUserChatMessage )
-                                             .map( ChatMessage::getContent)
-                                             .orElse( userMessage );
-        }
-        
-        ChatMessage message = chatMessageFactory.createUserChatMessage( supplier );
-        message.setAttachments( attachments );
-        return message;
-    }
+	private ChatMessage createUserMessage(String userMessage) {
+		Pattern commandPattern = Pattern.compile("^/(\\S+)");
+		Matcher commandMatcher = commandPattern.matcher(userMessage);
+		Supplier<String> supplier = () -> userMessage;
+		if (commandMatcher.find()) {
+			supplier = () -> promptRepository.findPromptByCommandName(commandMatcher.group(1))
+					.map(chatMessageFactory::createUserChatMessage).map(ChatMessage::getContent).orElse(userMessage);
+		}
 
+		ChatMessage message = chatMessageFactory.createUserChatMessage(supplier);
+		message.setAttachments(attachments);
+		return message;
+	}
 
 	public ChatMessage beginFunctionCallMessage() {
-        ChatMessage message = chatMessageFactory.createAssistantChatMessage( "" );
-        // DO NOT ADD IT TO CONVERSATION
-        applyToView( messageView -> {
-            messageView.appendMessage( message.getId(), message.getRole() );
-            messageView.setInputEnabled( false );
-        } );
-        return message;
+		ChatMessage message = chatMessageFactory.createAssistantChatMessage("");
+		// DO NOT ADD IT TO CONVERSATION
+		applyToView(messageView -> {
+			messageView.appendMessage(message.getId(), message.getRole());
+			messageView.setInputEnabled(false);
+		});
+		return message;
 	}
 
-	public ChatMessage beginMessageFromAssistant()
-    {
-        ChatMessage message = chatMessageFactory.createAssistantChatMessage( "" );
-        conversation.add( message );
-        applyToView( messageView -> {
-            messageView.appendMessage( message.getId(), message.getRole() );
-            messageView.setInputEnabled( false );
-        } );
-        return message;
-    }
+	public ChatMessage beginMessageFromAssistant() {
+		ChatMessage message = chatMessageFactory.createAssistantChatMessage("");
+		conversation.add(message);
+		applyToView(messageView -> {
+			messageView.appendMessage(message.getId(), message.getRole());
+			messageView.setInputEnabled(false);
+		});
+		return message;
+	}
 
-    public void updateMessageFromAssistant( ChatMessage message )
-    {
-        applyToView( messageView -> {
-            messageView.setMessageHtml( message.getId(), message.getContent() );
-        } );
-    }
+	public void updateMessageFromAssistant(ChatMessage message) {
+		applyToView(messageView -> {
+			messageView.setMessageHtml(message.getId(), message.getContent());
+		});
+	}
 
-    public void endMessageFromAssistant( ChatMessage message )
-    {
-    	applyToView( messageView -> {
-            messageView.setInputEnabled( true );
-            if ( message.getContent().isBlank() )
-            {
-            	conversation.removeLastMessage();
-            	messageView.removeMessage(message.getId());
-            }
-        } );
-    }
-    
-    public void hideMessage( String messageId )
-    {
-        applyToView( messageView -> {
-            messageView.hideMessage(messageId);
-        } );
-    }
-    
-    
-    
-    /**
-     * Cancels all running ChatGPT jobs
-     */
-    public void onStop()
-    {
-        var jobs = jobManager.find( null );
-        Arrays.stream( jobs )
-        	  .filter( job -> job.getName().startsWith( AssistAIJobConstants.JOB_PREFIX ) )
-        	  .forEach( Job::cancel );
+	public void endMessageFromAssistant(ChatMessage message) {
+		applyToView(messageView -> {
+			messageView.setInputEnabled(true);
+			if (message.getContent().isBlank()) {
+				conversation.removeLastMessage();
+				messageView.removeMessage(message.getId());
+			}
+		});
+	}
 
-        applyToView( messageView -> {
-            messageView.setInputEnabled( true );
-        } );
-    }
+	public void hideMessage(String messageId) {
+		applyToView(messageView -> {
+			messageView.hideMessage(messageId);
+		});
+	}
 
-    /**
-     * Copies the given code block to the system clipboard.
-     *
-     * @param codeBlock
-     *            The code block to be copied to the clipboard.
-     */
-    public void onCopyCode( String codeBlock )
-    {
-        var clipboard = new Clipboard( PlatformUI.getWorkbench().getDisplay() );
-        var textTransfer = TextTransfer.getInstance();
-        clipboard.setContents( new Object[] { codeBlock }, new Transfer[] { textTransfer } );
-        clipboard.dispose();
-    }
+	/**
+	 * Cancels all running ChatGPT jobs
+	 */
+	public void onStop() {
+		var jobs = jobManager.find(null);
+		Arrays.stream(jobs).filter(job -> job.getName().startsWith(AssistAIJobConstants.JOB_PREFIX))
+				.forEach(Job::cancel);
 
-    public void onApplyPatch( String codeBlock )
-    {
-        applyPatchWizzardHelper.showApplyPatchWizardDialog( codeBlock, null );
+		applyToView(messageView -> {
+			messageView.setInputEnabled(true);
+		});
+	}
 
-    }
+	/**
+	 * Copies the given code block to the system clipboard.
+	 *
+	 * @param codeBlock The code block to be copied to the clipboard.
+	 */
+	public void onCopyCode(String codeBlock) {
+		var clipboard = new Clipboard(PlatformUI.getWorkbench().getDisplay());
+		var textTransfer = TextTransfer.getInstance();
+		clipboard.setContents(new Object[] { codeBlock }, new Transfer[] { textTransfer });
+		clipboard.dispose();
+	}
 
-    public void onSendPredefinedPrompt( Prompts type, ChatMessage message )
-    {
-        conversation.add( message );
+	public void onApplyPatch(String codeBlock) {
+		applyPatchWizzardHelper.showApplyPatchWizardDialog(codeBlock, null);
 
-        // update view
-        applyToView( messageView -> {
-            messageView.appendMessage( message.getId(), message.getRole() );
-            messageView.setMessageHtml( message.getId(), "/" + type.getCommandName() );
-        } );
+	}
 
-        // schedule message
-        sendConversationJobProvider.get().schedule();
-    }
+	public void onSendPredefinedPrompt(Prompts type, ChatMessage message) {
+		conversation.add(message);
 
-    public void onAddAttachment()
-    {
-        Display display = PlatformUI.getWorkbench().getDisplay();
-        if ( Objects.isNull( display ) )
-        {
-            logger.error( "No active display" );
-            return;
-        }
-        
-        uiSync.asyncExec( () -> {
-            FileDialog fileDialog = new FileDialog( display.getActiveShell(), SWT.OPEN );
-            fileDialog.setText( "Select an Image" );
+		// update view
+		applyToView(messageView -> {
+			messageView.appendMessage(message.getId(), message.getRole());
+			messageView.setMessageHtml(message.getId(), "/" + type.getCommandName());
+		});
 
-            // Retrieve the last selected directory from the preferences
-            String lastSelectedDirectory = preferences.getString( LAST_SELECTED_DIR_KEY );
-            fileDialog.setFilterPath( lastSelectedDirectory );
+		// schedule message
+		sendConversationJobProvider.get().schedule();
+	}
 
-            fileDialog.setFilterExtensions( new String[] { "*.png", "*.jpeg", "*.jpg" } );
-            fileDialog.setFilterNames( new String[] { "PNG files (*.png)", "JPEG files (*.jpeg, *.jpg)" } );
+	public void onAddAttachment() {
+		Display display = PlatformUI.getWorkbench().getDisplay();
+		if (Objects.isNull(display)) {
+			logger.error("No active display");
+			return;
+		}
 
-            String selectedFilePath = fileDialog.open();
+		uiSync.asyncExec(() -> {
+			FileDialog fileDialog = new FileDialog(display.getActiveShell(), SWT.OPEN);
+			fileDialog.setText("Select an Image");
 
-            if ( selectedFilePath != null )
-            {
-                // Save the last selected directory back to the preferences
-                String newLastSelectedDirectory = new File( selectedFilePath ).getParent();
-                preferences.putValue( LAST_SELECTED_DIR_KEY, newLastSelectedDirectory );
+			// Retrieve the last selected directory from the preferences
+			String lastSelectedDirectory = preferences.getString(LAST_SELECTED_DIR_KEY);
+			fileDialog.setFilterPath(lastSelectedDirectory);
 
-                ImageData[] imageDataArray = new ImageLoader().load( selectedFilePath );
-                if ( imageDataArray.length > 0 )
-                {
-                    attachments.add( new Attachment.ImageAttachment( imageDataArray[0], createPreview( imageDataArray[0] ) ) );
-                    applyToView( messageView -> {
-                        messageView.setAttachments( attachments );
-                    } );
-                }
-            }
-        } );
-    }
+			fileDialog.setFilterExtensions(new String[] { "*.png", "*.jpeg", "*.jpg" });
+			fileDialog.setFilterNames(new String[] { "PNG files (*.png)", "JPEG files (*.jpeg, *.jpg)" });
 
-    public void applyToView( Consumer<? super ChatView> consumer )
-    {
-        partAccessor.findMessageView().ifPresent( consumer );
-    }
+			String selectedFilePath = fileDialog.open();
 
-    public void onImageSelected( Image image )
-    {
-        System.out.println( "selected" );
-    }
+			if (selectedFilePath != null) {
+				// Save the last selected directory back to the preferences
+				String newLastSelectedDirectory = new File(selectedFilePath).getParent();
+				preferences.putValue(LAST_SELECTED_DIR_KEY, newLastSelectedDirectory);
 
-    public void onAttachmentAdded( ImageData imageData )
-    {
-        attachments.add( new Attachment.ImageAttachment( imageData, createPreview( imageData ) ) );
-        applyToView( messageView -> {
-            messageView.setAttachments( attachments );
-        } );
-    }
+				ImageData[] imageDataArray = new ImageLoader().load(selectedFilePath);
+				if (imageDataArray.length > 0) {
+					attachments
+							.add(new Attachment.ImageAttachment(imageDataArray[0], createPreview(imageDataArray[0])));
+					applyToView(messageView -> {
+						messageView.setAttachments(attachments);
+					});
+				}
+			}
+		});
+	}
 
-    public void onAttachmentAdded( FileContentAttachment attachment )
-    {
-        attachments.add( attachment );
-        applyToView( messageView -> {
-            messageView.setAttachments( attachments );
-        } );
-    }
+	public void applyToView(Consumer<? super ChatView> consumer) {
+		partAccessor.findMessageView().ifPresent(consumer);
+	}
 
+	public void onImageSelected(Image image) {
+		System.out.println("selected");
+	}
 
-    public void onInsertCode(String codeBlock) {
-       uiSync.asyncExec(() -> {
-            try 
-            {
-                Optional.ofNullable(PlatformUI.getWorkbench())
-                    .map(workbench -> workbench.getActiveWorkbenchWindow())
-                    .map(window -> window.getActivePage())
-                    .map(page -> page.getActiveEditor())
-                    .flatMap(editor -> Optional.ofNullable(editor.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class)))
-                    .ifPresent(textEditor -> {
-                        var selectionProvider = textEditor.getSelectionProvider();
-                        var document = textEditor.getDocumentProvider()
-                                                 .getDocument(textEditor.getEditorInput());
-                        
-                        if (selectionProvider != null && document != null) 
-                        {
-                            var selection = (org.eclipse.jface.text.ITextSelection) selectionProvider.getSelection();
-                            try 
-                            {
-                                // Replace selection or insert at cursor position
-                                if (selection.getLength() > 0) 
-                                {
-                                    // Replace selected text
-                                    document.replace(selection.getOffset(), selection.getLength(), codeBlock);
-                                }
-                                else 
-                                {
-                                    // Insert at cursor position
-                                    document.replace(selection.getOffset(), 0, codeBlock);
-                                }
-                            } 
-                            catch (org.eclipse.jface.text.BadLocationException e) 
-                            {
-                                logger.error("Error inserting code at location", e);
-                            }
-                        } 
-                        else 
-                        {
-                            logger.error("Selection provider or document is null");
-                        }
-                    });
-            } 
-            catch (Exception e) 
-            {
-                logger.error("Error inserting code", e);
-            }
-        });
-    }
+	public void onAttachmentAdded(ImageData imageData) {
+		attachments.add(new Attachment.ImageAttachment(imageData, createPreview(imageData)));
+		applyToView(messageView -> {
+			messageView.setAttachments(attachments);
+		});
+	}
 
-    public void onDiffCode(String codeBlock) {
-        uiSync.asyncExec(() -> {
-            try {
-                Optional.ofNullable(PlatformUI.getWorkbench())
-                    .map(workbench -> workbench.getActiveWorkbenchWindow())
-                    .map(window -> window.getActivePage())
-                    .map(page -> page.getActiveEditor())
-                    .flatMap(editor -> Optional.ofNullable(editor.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class)))
-                    .ifPresent(textEditor -> {
-                        // Get the file information
-                        if (textEditor.getEditorInput() instanceof org.eclipse.ui.part.FileEditorInput) {
-                            org.eclipse.ui.part.FileEditorInput fileInput = 
-                                (org.eclipse.ui.part.FileEditorInput) textEditor.getEditorInput();
-                            
-                            // Get project name and file path
-                            String projectName = fileInput.getFile().getProject().getName();
-                            String filePath = fileInput.getFile().getProjectRelativePath().toString();
-                            
-                            // Generate diff using the CodeEditingService
-                            String diff = codeEditingService.generateCodeDiff(
-                                projectName, 
-                                filePath, 
-                                codeBlock, 
-                                3 // Default context lines
-                            );
-                            
-                            if (diff != null && !diff.isBlank() ) 
-                            {
-                                // Show the apply patch wizard with the generated diff and preselected project
-                                applyPatchWizzardHelper.showApplyPatchWizardDialog(diff, projectName);
-                            } else {
-                                logger.info("No differences found between current code and provided code block");
-                            }
-                        } else {
-                            logger.error("Cannot get file information from editor");
-                        }
-                    });
-            } catch (Exception e) {
-                logger.error("Error generating diff for code", e);
-            }
-        });
-    }
+	public void onAttachmentAdded(FileContentAttachment attachment) {
+		attachments.add(attachment);
+		applyToView(messageView -> {
+			messageView.setAttachments(attachments);
+		});
+	}
 
+	public void onInsertCode(String codeBlock) {
+		uiSync.asyncExec(() -> {
+			try {
+				Optional.ofNullable(PlatformUI.getWorkbench()).map(workbench -> workbench.getActiveWorkbenchWindow())
+						.map(window -> window.getActivePage()).map(page -> page.getActiveEditor())
+						.flatMap(editor -> Optional
+								.ofNullable(editor.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class)))
+						.ifPresent(textEditor -> {
+							var selectionProvider = textEditor.getSelectionProvider();
+							var document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
 
+							if (selectionProvider != null && document != null) {
+								var selection = (org.eclipse.jface.text.ITextSelection) selectionProvider
+										.getSelection();
+								try {
+									// Replace selection or insert at cursor position
+									if (selection.getLength() > 0) {
+										// Replace selected text
+										document.replace(selection.getOffset(), selection.getLength(), codeBlock);
+									} else {
+										// Insert at cursor position
+										document.replace(selection.getOffset(), 0, codeBlock);
+									}
+								} catch (org.eclipse.jface.text.BadLocationException e) {
+									logger.error("Error inserting code at location", e);
+								}
+							} else {
+								logger.error("Selection provider or document is null");
+							}
+						});
+			} catch (Exception e) {
+				logger.error("Error inserting code", e);
+			}
+		});
+	}
 
-    public void onNewFile(String codeBlock, String lang) 
-    {
-        uiSync.asyncExec(() -> {
-            try 
-            {
-                IProject project = Optional.ofNullable( PlatformUI.getWorkbench() )
-                        .map(IWorkbench::getActiveWorkbenchWindow)
-                        .map( IWorkbenchWindow::getActivePage )
-                        .map( IWorkbenchPage::getActiveEditor )
-                        .map(editor -> editor.getEditorInput())
-                        .filter(input -> input instanceof org.eclipse.ui.part.FileEditorInput)
-                        .map(input -> ((org.eclipse.ui.part.FileEditorInput) input).getFile().getProject())
-                        .orElse(null);
+	public void onDiffCode(String codeBlock) {
+		uiSync.asyncExec(() -> {
+			try {
+				Optional.ofNullable(PlatformUI.getWorkbench()).map(workbench -> workbench.getActiveWorkbenchWindow())
+						.map(window -> window.getActivePage()).map(page -> page.getActiveEditor())
+						.flatMap(editor -> Optional
+								.ofNullable(editor.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class)))
+						.ifPresent(textEditor -> {
+							// Get the file information
+							if (textEditor.getEditorInput() instanceof org.eclipse.ui.part.FileEditorInput) {
+								org.eclipse.ui.part.FileEditorInput fileInput = (org.eclipse.ui.part.FileEditorInput) textEditor
+										.getEditorInput();
 
-                if (project != null) 
-                {
-                    // Create suggested file name and path based on language
-                	String suggestedFileName = ResourceUtilities.getSuggestedFileName(lang, codeBlock);
-                    IPath suggestedPath      = ResourceUtilities.getSuggestedPath(project, lang, codeBlock);
-                    WizardNewFileCreationPage newFilePage = new WizardNewFileCreationPage("NewFilePage", new StructuredSelection(project));
-                    newFilePage.setTitle("New File");
-                    newFilePage.setDescription(String.format("Create a new %s file in the project", ResourceUtilities.getFileExtensionForLang( lang )) );
-                    
-                    // Set suggested file name and path
-                    if (suggestedPath != null) 
-                    {
-                        newFilePage.setContainerFullPath(suggestedPath);
-                    }
-                    if (suggestedFileName != null && !suggestedFileName.isBlank()) 
-                    {
-                        newFilePage.setFileName(suggestedFileName);
-                    }
-                    
-                    
-                    Wizard wizard = new Wizard() {
-                        @Override
-                        public void addPages() 
-                        {
-                            addPage(newFilePage);
-                        }
+								// Get project name and file path
+								String projectName = fileInput.getFile().getProject().getName();
+								String filePath = fileInput.getFile().getProjectRelativePath().toString();
 
-                        @Override
-                        public boolean performFinish() {
-                            IFile newFile = newFilePage.createNewFile();
-                            if (newFile != null) 
-                            {
-                                try (InputStream stream = new ByteArrayInputStream(codeBlock.getBytes(StandardCharsets.UTF_8))) 
-                                {
-                                    newFile.setContents(stream, true, true, null);
-                                    logger.info("New file created at: " + newFile.getFullPath().toString());
-                                    return true;
-                                } 
-                                catch (CoreException | IOException e) 
-                                {
-                                    logger.error("Error creating new file", e);
-                                }
-                            }
-                            return false;
-                        }
-                    };
+								// Generate diff using the CodeEditingService
+								String diff = codeEditingService.generateCodeDiff(projectName, filePath, codeBlock, 3 // Default
+																														// context
+																														// lines
+								);
 
-                    WizardDialog dialog = new WizardDialog(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(), wizard);
-                    dialog.open();
-                } 
-                else 
-                {
-                    logger.error("No active project found");
-                }
-            } 
-            catch (Exception e) 
-            {
-                logger.error("Error opening new file wizard", e);
-            }
-        });
-    }
-    
-    /**
-     * Handles model selection from the dropdown menu.
-     * 
-     * This method is called when a user selects a different AI model from the
-     * dropdown menu in the UI. It updates the preferences to store the selected
-     * model and would typically update any service configurations to use the new model.
-     * 
-     * @param modelId The ID of the selected model
-     */
-    public void onModelSelected(String modelId) 
-    {
-        logger.info("Model selected: " + modelId);
-        
-        modelReposotiry.setModelInUse( modelId );
-        initializeAvailableModels();
-        
+								if (diff != null && !diff.isBlank()) {
+									// Show the apply patch wizard with the generated diff and preselected project
+									applyPatchWizzardHelper.showApplyPatchWizardDialog(diff, projectName);
+								} else {
+									logger.info("No differences found between current code and provided code block");
+								}
+							} else {
+								logger.error("Cannot get file information from editor");
+							}
+						});
+			} catch (Exception e) {
+				logger.error("Error generating diff for code", e);
+			}
+		});
+	}
+
+	public void onNewFile(String codeBlock, String lang) {
+		uiSync.asyncExec(() -> {
+			try {
+				IProject project = Optional.ofNullable(PlatformUI.getWorkbench())
+						.map(IWorkbench::getActiveWorkbenchWindow).map(IWorkbenchWindow::getActivePage)
+						.map(IWorkbenchPage::getActiveEditor).map(editor -> editor.getEditorInput())
+						.filter(input -> input instanceof org.eclipse.ui.part.FileEditorInput)
+						.map(input -> ((org.eclipse.ui.part.FileEditorInput) input).getFile().getProject())
+						.orElse(null);
+
+				if (project != null) {
+					// Create suggested file name and path based on language
+					String suggestedFileName = ResourceUtilities.getSuggestedFileName(lang, codeBlock);
+					IPath suggestedPath = ResourceUtilities.getSuggestedPath(project, lang, codeBlock);
+					WizardNewFileCreationPage newFilePage = new WizardNewFileCreationPage("NewFilePage",
+							new StructuredSelection(project));
+					newFilePage.setTitle("New File");
+					newFilePage.setDescription(String.format("Create a new %s file in the project",
+							ResourceUtilities.getFileExtensionForLang(lang)));
+
+					// Set suggested file name and path
+					if (suggestedPath != null) {
+						newFilePage.setContainerFullPath(suggestedPath);
+					}
+					if (suggestedFileName != null && !suggestedFileName.isBlank()) {
+						newFilePage.setFileName(suggestedFileName);
+					}
+
+					Wizard wizard = new Wizard() {
+						@Override
+						public void addPages() {
+							addPage(newFilePage);
+						}
+
+						@Override
+						public boolean performFinish() {
+							IFile newFile = newFilePage.createNewFile();
+							if (newFile != null) {
+								try (InputStream stream = new ByteArrayInputStream(
+										codeBlock.getBytes(StandardCharsets.UTF_8))) {
+									newFile.setContents(stream, true, true, null);
+									logger.info("New file created at: " + newFile.getFullPath().toString());
+									return true;
+								} catch (CoreException | IOException e) {
+									logger.error("Error creating new file", e);
+								}
+							}
+							return false;
+						}
+					};
+
+					WizardDialog dialog = new WizardDialog(
+							PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(), wizard);
+					dialog.open();
+				} else {
+					logger.error("No active project found");
+				}
+			} catch (Exception e) {
+				logger.error("Error opening new file wizard", e);
+			}
+		});
+	}
+
+	/**
+	 * Handles model selection from the dropdown menu.
+	 * 
+	 * This method is called when a user selects a different AI model from the
+	 * dropdown menu in the UI. It updates the preferences to store the selected
+	 * model and would typically update any service configurations to use the new
+	 * model.
+	 * 
+	 * @param modelId The ID of the selected model
+	 */
+	public void onModelSelected(String modelId) {
+		logger.info("Model selected: " + modelId);
+
+		modelReposotiry.setModelInUse(modelId);
+		initializeAvailableModels();
+
 //        ChatMessage message = chatMessageFactory.createAssistantChatMessage(
 //                "Model changed to **" + modelInUse.modelName() + "**. New messages will use this model.");
 //        
@@ -544,50 +480,46 @@ public class ChatViewPresenter
 //                messageView.removeMessage(message.getId());
 //            });
 //        });
-    }
-    
-    /**
-     * Regenerates the last AI response using the currently selected model.
-     * 
-     * This method is called when the user clicks the replay button. It removes
-     * the last assistant message from the conversation (if it exists) and
-     * sends the conversation again to generate a new response.
-     */
-    public void onReplayLastMessage() {
-        logger.info("Replaying last message with current model");
-        
-        // Check if there's a conversation with at least one message
-        if (conversation.messages().isEmpty()) 
-        {
-            return;
-        }
-        // If the last message is from the assistant, remove it
-        // (We want to regenerate the assistant's response)
-        List<ChatMessage> messages = conversation.messages();
-        if (!messages.isEmpty() && "assistant".equals(messages.get(messages.size() - 1).getRole())) {
-            ChatMessage lastMessage = messages.get(messages.size() - 1);
-            conversation.removeLastMessage();
-            
-            // Remove the message from the UI
-            applyToView(view -> {
-                view.removeMessage(lastMessage.getId());
-            });
-        }
-        // Send the conversation for processing to generate a new response
-    	sendConversationJobProvider.get().schedule();
-    }
+	}
 
-	public void onViewVisible() 
-	{
+	/**
+	 * Regenerates the last AI response using the currently selected model.
+	 * 
+	 * This method is called when the user clicks the replay button. It removes the
+	 * last assistant message from the conversation (if it exists) and sends the
+	 * conversation again to generate a new response.
+	 */
+	public void onReplayLastMessage() {
+		logger.info("Replaying last message with current model");
+
+		// Check if there's a conversation with at least one message
+		if (conversation.messages().isEmpty()) {
+			return;
+		}
+		// If the last message is from the assistant, remove it
+		// (We want to regenerate the assistant's response)
+		List<ChatMessage> messages = conversation.messages();
+		if (!messages.isEmpty() && "assistant".equals(messages.get(messages.size() - 1).getRole())) {
+			ChatMessage lastMessage = messages.get(messages.size() - 1);
+			conversation.removeLastMessage();
+
+			// Remove the message from the UI
+			applyToView(view -> {
+				view.removeMessage(lastMessage.getId());
+			});
+		}
+		// Send the conversation for processing to generate a new response
+		sendConversationJobProvider.get().schedule();
+	}
+
+	public void onViewVisible() {
 		initializeAvailableModels();
 		updateAutocomplete();
 	}
 
-    public void updateAutocomplete()
-    {
-        Map<String, String> mappings = promptRepository.getAllPrompts()
-                                                       .stream()
-                                                       .collect( Collectors.toMap( Prompts::getCommandName, Prompts::getDescription ) );
-        applyToView( view -> view.setAutocompleteModel( mappings  ) );
-    }
+	public void updateAutocomplete() {
+		Map<String, String> mappings = promptRepository.getAllPrompts().stream()
+				.collect(Collectors.toMap(Prompts::getCommandName, Prompts::getDescription));
+		applyToView(view -> view.setAutocompleteModel(mappings));
+	}
 }

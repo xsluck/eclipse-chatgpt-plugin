@@ -62,6 +62,7 @@ public class ModelApiDescriptorRepository
 			}
 		}
 		return -1;
+		
 	}
 
 	public ModelApiDescriptor save( int selectedIndex, ModelApiDescriptor updatedModelStub )
@@ -88,7 +89,8 @@ public class ModelApiDescriptorRepository
 	    		  updatedModelStub.modelName(), 
 	    		  updatedModelStub.temperature(), 
 	    		  updatedModelStub.vision(),
-	    		  updatedModelStub.functionCalling()
+	    		  updatedModelStub.functionCalling(),
+	    		  updatedModelStub.toolCalling()
 	       );
         addOrReplace.accept( toStore );
         

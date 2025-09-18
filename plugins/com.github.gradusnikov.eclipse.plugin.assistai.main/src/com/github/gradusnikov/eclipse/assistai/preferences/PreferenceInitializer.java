@@ -20,44 +20,48 @@ import jakarta.inject.Singleton;
  */
 @Creatable
 @Singleton
-public class PreferenceInitializer extends AbstractPreferenceInitializer
-{
-    @Inject
-    private ModelApiDescriptorRepository modelApiDescriptorRepository;
-    
-    public void init()
-    {
-        modelApiDescriptorRepository = Activator.getDefault().getModelApiDescriptorRepository();
-    }
-    
-    public void initializeDefaultPreferences()
-    {
-        init();
-        
-        IPreferenceStore store = Activator.getDefault().getPreferenceStore();
-        store.setDefault( PreferenceConstants.ASSISTAI_CONNECTION_TIMEOUT_SECONDS, 10 );
-        store.setDefault( PreferenceConstants.ASSISTAI_REQUEST_TIMEOUT_SECONDS, 30 );
+public class PreferenceInitializer extends AbstractPreferenceInitializer {
+	@Inject
+	private ModelApiDescriptorRepository modelApiDescriptorRepository;
 
-        ModelApiDescriptor gpt4 = new ModelApiDescriptor( "5e8d3a9f-c5e2-4c1d-9f3b-a7e6b4d2c1e0", "openai", "https://api.openai.com/v1/chat/completions", "", "gpt-4o", 7, true, true );
-        ModelApiDescriptor claude = new ModelApiDescriptor( "8d099c40-5a01-483b-878f-bfed8c0d1bbe", "claude", "https://api.anthropic.com/v1/messages", "", "claude-3-7-sonnet-20250219", 7, true, true );
-        ModelApiDescriptor groq = new ModelApiDescriptor( "9c4d7e8f-a1b2-3c4d-5e6f-7a8b9c0d1e2f", "groq", "https://api.groq.com/openai/v1/chat/completions", "", "qwen-qwq-32b", 7, false, true );
-        ModelApiDescriptor deepseek = new ModelApiDescriptor( "4e28814b-d7cd-42f5-bd3e-0df577a3d2c4", "deepseek", "https://api.deepseek.com/chat/completions", "", "deepseek-chat", 7, false, true );
-        ModelApiDescriptor gemini = new ModelApiDescriptor( "15742962-271f-4ffb-80aa-58224631015a", "gemini", "https://generativelanguage.googleapis.com/v1beta", "", "gemini-2.0-flash", 7, true, true );
-        
-        modelApiDescriptorRepository.initializeDefaultDescriptors( gpt4, claude, groq, deepseek, gemini );
-        modelApiDescriptorRepository.initializeDefaultDescriptorInUse( gpt4 );
-        
-        var descriptors = McpServerBuiltins.listBuiltInImplementations();
-        
-        String mcpServersJson = McpServerDescriptorUtilities.toJson( descriptors );
-        store.setDefault(PreferenceConstants.ASSISTAI_DEFINED_MCP_SERVERS, mcpServersJson);
+	public void init() {
+		modelApiDescriptorRepository = Activator.getDefault().getModelApiDescriptorRepository();
+	}
 
-        PromptLoader promptLoader = new PromptLoader();
-        for ( Prompts prompt : Prompts.values() )
-        {
-            store.setDefault( prompt.preferenceName(), promptLoader.getDefaultPrompt( prompt.getFileName() ) );
-        }
-    }
-    
+	public void initializeDefaultPreferences() {
+		init();
+
+		IPreferenceStore store = Activator.getDefault().getPreferenceStore();
+		store.setDefault(PreferenceConstants.ASSISTAI_CONNECTION_TIMEOUT_SECONDS, 10);
+		store.setDefault(PreferenceConstants.ASSISTAI_REQUEST_TIMEOUT_SECONDS, 30);
+
+		ModelApiDescriptor gpt4 = new ModelApiDescriptor("5e8d3a9f-c5e2-4c1d-9f3b-a7e6b4d2c1e0", "openai",
+				"https://api.openai.com/v1/chat/completions", "", "gpt-4o", 7, true, true, false);
+		ModelApiDescriptor claude = new ModelApiDescriptor("8d099c40-5a01-483b-878f-bfed8c0d1bbe", "claude",
+				"https://api.anthropic.com/v1/messages", "", "claude-3-7-sonnet-20250219", 7, true, true, false);
+		ModelApiDescriptor groq = new ModelApiDescriptor("9c4d7e8f-a1b2-3c4d-5e6f-7a8b9c0d1e2f", "groq",
+				"https://api.groq.com/openai/v1/chat/completions", "", "qwen-qwq-32b", 7, false, true, false);
+		ModelApiDescriptor deepseek = new ModelApiDescriptor("4e28814b-d7cd-42f5-bd3e-0df577a3d2c4", "deepseek",
+				"https://api.deepseek.com/chat/completions", "", "deepseek-chat", 7, false, true, false);
+		ModelApiDescriptor gemini = new ModelApiDescriptor("15742962-271f-4ffb-80aa-58224631015a", "gemini",
+				"https://generativelanguage.googleapis.com/v1beta", "", "gemini-2.0-flash", 7, true, true, false);
+		ModelApiDescriptor ollama = new ModelApiDescriptor("15742962-271f-4ffb-aaaa-58224631015a", "ollama",
+				"http://127.0.0.1:11434/v1/chat/completions", "", "qwen3:1.7b", 7, false, false, true);
+		ModelApiDescriptor ollama2 = new ModelApiDescriptor("15742962-271f-4ffb-aaaa-58224631015b", "ollama",
+				"http://127.0.0.1:11434/v1/chat/completions", "", "qwen2.5-coder:1.5b", 7, false, false, true);
+
+		modelApiDescriptorRepository.initializeDefaultDescriptors(gpt4, claude, groq, deepseek, gemini, ollama, ollama2);
+		modelApiDescriptorRepository.initializeDefaultDescriptorInUse(gpt4);
+
+		var descriptors = McpServerBuiltins.listBuiltInImplementations();
+
+		String mcpServersJson = McpServerDescriptorUtilities.toJson(descriptors);
+		store.setDefault(PreferenceConstants.ASSISTAI_DEFINED_MCP_SERVERS, mcpServersJson);
+
+		PromptLoader promptLoader = new PromptLoader();
+		for (Prompts prompt : Prompts.values()) {
+			store.setDefault(prompt.preferenceName(), promptLoader.getDefaultPrompt(prompt.getFileName()));
+		}
+	}
 
 }

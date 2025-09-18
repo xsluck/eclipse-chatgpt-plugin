@@ -11,34 +11,29 @@ import jakarta.inject.Singleton;
 
 @Creatable
 @Singleton
-public class PrintMessageSubscriber implements Flow.Subscriber<Incoming>
-{
-    private Flow.Subscription subscription;
+public class PrintMessageSubscriber implements Flow.Subscriber<Incoming> {
+	private Flow.Subscription subscription;
 
-    @Override
-    public void onSubscribe(Subscription subscription)
-    {
-        this.subscription = subscription;
-        subscription.request(1);
-    }
+	@Override
+	public void onSubscribe(Subscription subscription) {
+		this.subscription = subscription;
+		subscription.request(1);
+	}
 
-    @Override
-    public void onNext(Incoming item)
-    {
-        System.out.print(item.payload());
-        subscription.request(1);
-    }
+	@Override
+	public void onNext(Incoming item) {
+		System.out.print(item.payload());
+		subscription.request(1);
+	}
 
-    @Override
-    public void onError(Throwable throwable)
-    {
-    }
+	@Override
+	public void onError(Throwable throwable) {
+	}
 
-    @Override
-    public void onComplete()
-    {
-        System.out.print("\n\n");
-        subscription.request(1);
-    }
+	@Override
+	public void onComplete() {
+		System.out.print("\n\n");
+		subscription.request(1);
+	}
 
 }

@@ -45,7 +45,7 @@ public class MarkdownParser
     // Code and function call patterns
     private static final Pattern CODE_INLINE_PATTERN                 = Pattern.compile("`(.*?)`");
     private static final Pattern CODE_BLOCK_PATTERN                  = Pattern.compile( "^\\s*```([a-zA-Z0-9]*)\\s*$" );
-    private static final Pattern FUNCTION_CALL_PATTERN               = Pattern.compile( "^\"function_call\".*" );
+    private static final Pattern FUNCTION_CALL_PATTERN               = Pattern.compile( "^function_call.*" );
     
     // Table patterns
     private static final Pattern TABLE_ROW_PATTERN                   = Pattern.compile( "^\\|(.*)\\|\\s*$" );
@@ -248,6 +248,7 @@ public class MarkdownParser
         catch ( Exception e )
         {
             // Add error handling
+        	e.printStackTrace();
             out.append( "<div class=\"error\">Error parsing content: " ).append( e.getMessage() ).append( "</div>" );
         }
         return out.toString();
